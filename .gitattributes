@@ -1,0 +1,23 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Shell scripts must stay LF (Unix line endings)
+*.sh text eol=lf
+
+# Batch scripts must stay CRLF (Windows line endings)
+*.bat text eol=crlf
+
+# Python files - LF on commit, checkout depends on platform
+*.py text
+
+# Markdown/text files
+*.md text
+*.txt text
+*.yml text
+*.yaml text
+*.json text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
