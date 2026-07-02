@@ -59,10 +59,16 @@ if not exist ".venv\Scripts\activate.bat" (
 )
 
 :: --------------------------------------------------
-:: 4. 安装依赖
+:: 4. 安装依赖（带缓存标记）
 :: --------------------------------------------------
-echo [3/5] 正在安装依赖...
 call .venv\Scripts\activate.bat
+
+if exist ".venv\.deps_installed" (
+    echo [3/5] 依赖已安装，跳过安装步骤
+    goto :skip_install
+)
+
+echo [3/5] 正在安装依赖...
 
 :: 升级 pip（避免旧版 pip 找不到包）
 python -m pip install --upgrade pip -q
@@ -79,6 +85,10 @@ if !ERRORLEVEL! neq 0 (
     exit /b 1
 )
 echo   依赖安装完成
+
+:: 写入缓存标记，下次跳过安装
+type nul > ".venv\.deps_installed"
+:skip_install
 
 :: --------------------------------------------------
 :: 5. 验证模块可导入

@@ -54,21 +54,29 @@ else
 fi
 
 # --------------------------------------------------
-# 4. 安装依赖
+# 4. 安装依赖（带缓存标记）
 # --------------------------------------------------
-echo "[3/5] 正在安装依赖..."
 source .venv/bin/activate
 
-# 升级 pip
-python -m pip install --upgrade pip -q 2>/dev/null || echo "   [警告] pip 升级失败，尝试继续..."
+if [ -f ".venv/.deps_installed" ]; then
+    echo "[3/5] 依赖已安装，跳过安装步骤"
+else
+    echo "[3/5] 正在安装依赖..."
 
-pip install -r requirements.txt || {
-    echo ""
-    echo "[错误] 依赖安装失败"
-    echo "请检查网络连接，或手动运行：pip install -r requirements.txt"
-    exit 1
-}
-echo "   依赖安装完成"
+    # 升级 pip
+    python -m pip install --upgrade pip -q 2>/dev/null || echo "   [警告] pip 升级失败，尝试继续..."
+
+    pip install -r requirements.txt || {
+        echo ""
+        echo "[错误] 依赖安装失败"
+        echo "请检查网络连接，或手动运行：pip install -r requirements.txt"
+        exit 1
+    }
+    echo "   依赖安装完成"
+
+    # 写入缓存标记，下次跳过安装
+    touch .venv/.deps_installed
+fi
 
 # --------------------------------------------------
 # 5. 验证模块可导入
