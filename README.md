@@ -22,9 +22,11 @@
 | 前端渲染 | Jinja2 模板 |
 | 交互 | HTMX（异步片段替换）+ Alpine.js（客户端 UI 状态） |
 | 样式 | Tailwind CSS（零 Node 依赖） |
-| 主题 | 科幻风格（浅色 + 霓虹青强调） |
+| 主题 | 浅色主题 |
 
 ## 快速启动
+
+### 方式一：源码运行（需要 Python 3.10+）
 
 ```bash
 # 安装依赖
@@ -36,6 +38,43 @@ uvicorn app.main:app --reload --port 8000
 # 访问
 # http://localhost:8000
 ```
+
+### 方式二：便携版（零安装，解压即用）
+
+适合不想接触命令行的用户，每台电脑只需 Python 3.10+。
+
+```bash
+# 1. 打包便携版（在项目目录执行）
+python scripts/distribute_portable.py
+
+# 输出：dist/API密钥管理器_Portable_v1.0.zip
+
+# 2. 用户解压 zip 后：
+#    Windows: 双击 start.bat
+#    macOS/Linux: 终端执行 chmod +x start.sh && ./start.sh
+#    浏览器自动打开 http://localhost:8000
+```
+
+### 方式三：独立可执行文件（无需 Python）
+
+适合完全不想装 Python 的用户，需要先在对应平台用 PyInstaller 打包。
+
+```bash
+# 安装打包工具
+pip install pyinstaller
+
+# 打包当前平台可执行文件
+python scripts/build.py
+
+# 输出目录（根据平台不同）：
+#   Windows: dist/API密钥管理器_v1.0_windows/API密钥管理器.exe
+#   macOS:   dist/API密钥管理器_v1.0_darwin/API密钥管理器.app
+#   Linux:   dist/API密钥管理器_v1.0_linux/API密钥管理器
+```
+
+PyInstaller **不支持交叉编译**，需要在 Windows / macOS / Linux 上分别执行打包。
+
+---
 
 ## 项目结构
 
@@ -61,8 +100,15 @@ api_management/
 │       └── vendor/        # 第三方 JS（自动填充）
 ├── data/
 │   └── app.db             # SQLite 数据库
-├── tailwind.config.js
+├── scripts/
+│   ├── distribute_portable.py  # 便携版打包脚本
+│   ├── build.py                # 可执行文件打包脚本
+│   └── build.spec              # PyInstaller 打包配置
+├── start.bat              # [便携版] Windows 一键启动
+├── start.sh               # [便携版] macOS/Linux 一键启动
+├── .gitignore
 ├── requirements.txt
+├── tailwind.config.js
 └── README.md
 ```
 
@@ -91,3 +137,12 @@ api_management/
 - 一键复制模型名、双地址、API Key、官网
 - 模型属性分类（文本/图像/语音/向量嵌入/代码/推理/多模态）
 - 完整 CRUD：新增、编辑、删除 API 记录
+
+### 发行版
+
+#### 便携版（Portable）
+- `start.bat`：Windows 一键启动脚本，自动创建虚拟环境、安装依赖、启动服务
+- `start.sh`：macOS/Linux 一键启动脚本，功能同上
+- `scripts/distribute_portable.py`：将项目打包为便携式 zip 包，解压即用
+- `scripts/build.spec`：PyInstaller 打包配置（含控制台版和隐藏窗口版）
+- `scripts/build.py`：跨平台可执行文件打包脚本

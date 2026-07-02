@@ -1,15 +1,27 @@
+# Python
 __pycache__/
-*.pyc
-.venv/
-*.db
-*.env
-.env
-.DS_Store
+*.py[cod]
 *.egg-info/
+.venv/
+*.egg
+
+# Build
 dist/
 build/
 *.spec
-output.txt
-test_out.txt
-test_verify.py
-.atomcode/
+
+# Database (用户数据，不进版本控制)
+data/app.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
