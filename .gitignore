@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+*.db
+*.env
+.env
+.DS_Store
+*.egg-info/
+dist/
+build/
+*.spec
+output.txt
+test_out.txt
+test_verify.py
+.atomcode/

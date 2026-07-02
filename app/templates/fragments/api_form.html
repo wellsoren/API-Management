@@ -1,0 +1,360 @@
+<div class="card-glass rounded-xl p-5 glow-cyan" id="api-form-root"
+     x-data="{
+  provider_: '{{ api.provider if api else '' }}',
+  url_openai_: '{{ api.url_openai if api else '' }}',
+  url_anthropic_: '{{ api.url_anthropic if api else '' }}',
+  website_: '{{ api.website if api else '' }}',
+  model_name_: '{{ api.model_name if api else '' }}',
+  api_key_: '{{ api.api_key if api else '' }}',
+  loading: false,
+  fetchedModels: [],
+  fetchError: '',
+  onProviderChange() {
+    this.fetchedModels = [];
+    this.fetchError = '';
+    // 自动填充接口地址（OpenAI 兼容和 Anthropic 原生）和官网
+    if (typeof PROVIDER_CONFIGS !== 'undefined') {
+      const cfg = PROVIDER_CONFIGS.find(c => c.name === this.provider_);
+      if (cfg) {
+        this.url_openai_ = cfg.base_url_openai || '';
+        this.url_anthropic_ = cfg.base_url_anthropic || '';
+        this.website_ = cfg.website || '';
+      }
+    }
+  },
+  async fetchModels() {
+    // 优先用 OpenAI 兼容地址拉取模型列表
+    const baseUrl = this.url_openai_ || this.url_anthropic_;
+    if (!baseUrl) { this.fetchError = '请先选择提供商并填写接口地址'; return; }
+    if (!this.api_key_) { this.fetchError = '请先填写 API Key'; return; }
+    this.loading = true;
+    this.fetchError = '';
+    try {
+      const resp = await fetch('/api/v1/apis/fetch-models?base_url=' + encodeURIComponent(baseUrl) + '&api_key=' + encodeURIComponent(this.api_key_));
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.detail || '拉取失败');
+      }
+      const data = await resp.json();
+      this.fetchedModels = data.models || [];
+    } catch (e) {
+      this.fetchError = e.message;
+    } finally {
+      this.loading = false;
+    }
+  },
+  selectModel(m) {
+    this.model_name_ = m;
+  },
+  clearKey() {
+    this.api_key_ = '';
+  }
+}">
+
+  <div class="flex items-center justify-between mb-5">
+    <h3 class="text-sm font-semibold text-gray-700 tracking-wider flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
+      {% if api %}编辑接口 · {{ api.name }}{% else %}新接口注册{% endif %}
+    </h3>
+    <button @click="closeForm()"
+            class="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  {% if api %}
+  <!-- ========== 编辑模式 ========== -->
+  <form hx-put="/api/v1/apis/{{ api.id }}"
+        hx-target="#api-table"
+        hx-swap="innerHTML"
+        onsubmit="closeForm()"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+    <!-- 1. 模型提供商 -->
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型提供商</label>
+      <select name="provider"
+              x-model="provider_"
+              @change="onProviderChange()"
+              class="w-full px-3 py-2 input-neon rounded-lg text-sm appearance-none bg-white">
+        <option value="">-- 选择提供商 --</option>
+        {% for p in providers %}
+        <option value="{{ p }}" {% if api and api.provider == p %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- 2. 模型名 -->
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型名 *</label>
+      <input type="text" name="model_name" x-model="model_name_" required
+             placeholder="gpt-4o, claude-3-opus..."
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+      <template x-if="fetchedModels.length > 0">
+        <div class="mt-2 max-h-28 overflow-y-auto border border-cyan-200/40 rounded-lg p-1.5 bg-white/50">
+          <template x-for="m in fetchedModels" :key="m">
+            <span @click="selectModel(m)"
+                  class="inline-block px-2 py-0.5 m-0.5 text-xs bg-cyan-50 text-cyan-700 rounded cursor-pointer hover:bg-cyan-200 border border-cyan-200/50 transition-colors"
+                  x-text="m"></span>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- 3. 接口地址：OpenAI 兼容 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">
+        <span class="inline-flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          OpenAI 兼容接口地址
+        </span>
+      </label>
+      <input type="url" name="url_openai" x-model="url_openai_"
+             placeholder="https://api.openai.com/v1"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+    </div>
+
+    <!-- 4. 接口地址：Anthropic 原生 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">
+        <span class="inline-flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+          Anthropic 原生接口地址
+        </span>
+      </label>
+      <input type="url" name="url_anthropic" x-model="url_anthropic_"
+             placeholder="https://api.anthropic.com/"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+    </div>
+
+    <!-- 5. API Key + 拉取模型 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">密钥 (API Key)</label>
+      <div class="flex gap-2">
+        <input type="text" name="api_key" x-model="api_key_"
+               placeholder="sk-..."
+               class="flex-1 px-3 py-2 input-neon rounded-lg text-sm font-mono"
+               id="api-key-input-edit">
+        <button type="button"
+                class="px-3 py-2 bg-gray-100 text-gray-500 text-sm rounded-lg hover:bg-gray-200 border border-gray-300/50 transition-colors"
+                @click="clearKey()">
+          清空
+        </button>
+        <button type="button"
+                @click="fetchModels()"
+                :disabled="loading"
+                class="px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap
+                       bg-violet-100 text-violet-700 border border-violet-300/50
+                       hover:bg-violet-200 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span x-show="!loading">拉取模型列表</span>
+          <span x-show="loading">拉取中...</span>
+        </button>
+      </div>
+      <template x-if="fetchError">
+        <p class="mt-1 text-xs text-red-500" x-text="fetchError"></p>
+      </template>
+    </div>
+
+    <!-- 6. API 名称 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">API 名称</label>
+      <input type="text" name="name"
+             value="{{ api.name }}"
+             placeholder="例如：GPT-4o 接口"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+
+    <!-- 7. 所属应用 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">所属应用</label>
+      <input type="text" name="app_usage"
+             value="{{ api.app_usage }}"
+             placeholder="个人助手、聊天机器人、数据分析..."
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+    </div>
+
+    <!-- 8. 官网 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">官网</label>
+      <input type="url" name="website" x-model="website_"
+             placeholder="https://platform.openai.com"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+    </div>
+
+    <!-- 9. 模型属性 -->
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型属性</label>
+      <select name="model_attr"
+              class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+        <option value="">选择属性</option>
+        <option value="文本" {% if api.model_attr == '文本' %}selected{% endif %}>文本</option>
+        <option value="图像" {% if api.model_attr == '图像' %}selected{% endif %}>图像</option>
+        <option value="语音" {% if api.model_attr == '语音' %}selected{% endif %}>语音</option>
+        <option value="向量嵌入" {% if api.model_attr == '向量嵌入' %}selected{% endif %}>向量嵌入</option>
+        <option value="代码" {% if api.model_attr == '代码' %}selected{% endif %}>代码</option>
+        <option value="推理" {% if api.model_attr == '推理' %}selected{% endif %}>推理</option>
+        <option value="多模态" {% if api.model_attr == '多模态' %}selected{% endif %}>多模态</option>
+        <option value="其他" {% if api.model_attr == '其他' %}selected{% endif %}>其他</option>
+      </select>
+    </div>
+
+    <div class="sm:col-span-2 flex justify-end gap-3 pt-2 border-t border-cyan-200/40">
+      <button type="button" @click="closeForm()"
+              class="px-4 py-2 text-sm text-gray-500 bg-gray-100/80 border border-gray-300/50 rounded-lg hover:bg-gray-200 transition-colors">
+        取消
+      </button>
+      <button type="submit"
+              class="px-5 py-2 text-sm text-white bg-cyan-600 rounded-lg hover:bg-cyan-500 transition-colors
+                     border border-cyan-400/30 shadow-[0_0_12px_rgba(6,182,212,0.15)]">
+        保存修改
+      </button>
+    </div>
+  </form>
+  {% else %}
+  <!-- ========== 新增模式 ========== -->
+  <form hx-post="/api/v1/apis/"
+        hx-target="#api-table"
+        hx-swap="innerHTML"
+        onsubmit="closeForm()"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+    <!-- 1. 模型提供商 -->
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型提供商</label>
+      <select name="provider"
+              x-model="provider_"
+              @change="onProviderChange()"
+              class="w-full px-3 py-2 input-neon rounded-lg text-sm appearance-none bg-white">
+        <option value="">-- 选择提供商 --</option>
+        {% for p in providers %}
+        <option value="{{ p }}">{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- 2. 模型名 -->
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型名 *</label>
+      <input type="text" name="model_name" x-model="model_name_" required
+             placeholder="gpt-4o, claude-3-opus..."
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+      <template x-if="fetchedModels.length > 0">
+        <div class="mt-2 max-h-28 overflow-y-auto border border-cyan-200/40 rounded-lg p-1.5 bg-white/50">
+          <template x-for="m in fetchedModels" :key="m">
+            <span @click="selectModel(m)"
+                  class="inline-block px-2 py-0.5 m-0.5 text-xs bg-cyan-50 text-cyan-700 rounded cursor-pointer hover:bg-cyan-200 border border-cyan-200/50 transition-colors"
+                  x-text="m"></span>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- 3. 接口地址：OpenAI 兼容 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">
+        <span class="inline-flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          OpenAI 兼容接口地址
+        </span>
+      </label>
+      <input type="url" name="url_openai" x-model="url_openai_"
+             placeholder="https://api.openai.com/v1"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+    </div>
+
+    <!-- 4. 接口地址：Anthropic 原生 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">
+        <span class="inline-flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+          Anthropic 原生接口地址
+        </span>
+      </label>
+      <input type="url" name="url_anthropic" x-model="url_anthropic_"
+             placeholder="https://api.anthropic.com/"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+    </div>
+
+    <!-- 5. API Key + 拉取模型 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">密钥 (API Key)</label>
+      <div class="flex gap-2">
+        <input type="text" name="api_key" x-model="api_key_"
+               placeholder="sk-..."
+               class="flex-1 px-3 py-2 input-neon rounded-lg text-sm font-mono"
+               id="api-key-input-new">
+        <button type="button"
+                class="px-3 py-2 bg-gray-100 text-gray-500 text-sm rounded-lg hover:bg-gray-200 border border-gray-300/50 transition-colors"
+                @click="clearKey()">
+          清空
+        </button>
+        <button type="button"
+                @click="fetchModels()"
+                :disabled="loading"
+                class="px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap
+                       bg-violet-100 text-violet-700 border border-violet-300/50
+                       hover:bg-violet-200 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span x-show="!loading">拉取模型列表</span>
+          <span x-show="loading">拉取中...</span>
+        </button>
+      </div>
+      <template x-if="fetchError">
+        <p class="mt-1 text-xs text-red-500" x-text="fetchError"></p>
+      </template>
+    </div>
+
+    <!-- 6. API 名称 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">API 名称</label>
+      <input type="text" name="name"
+             placeholder="例如：GPT-4o 接口"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+
+    <!-- 7. 所属应用 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">所属应用</label>
+      <input type="text" name="app_usage"
+             placeholder="个人助手、聊天机器人、数据分析..."
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+    </div>
+
+    <!-- 8. 官网 -->
+    <div class="sm:col-span-2">
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">官网</label>
+      <input type="url" name="website" x-model="website_"
+             placeholder="https://platform.openai.com"
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm font-mono">
+    </div>
+
+    <!-- 9. 模型属性 -->
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型属性</label>
+      <select name="model_attr"
+              class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+        <option value="">选择属性</option>
+        <option value="文本">文本</option>
+        <option value="图像">图像</option>
+        <option value="语音">语音</option>
+        <option value="向量嵌入">向量嵌入</option>
+        <option value="代码">代码</option>
+        <option value="推理">推理</option>
+        <option value="多模态">多模态</option>
+        <option value="其他">其他</option>
+      </select>
+    </div>
+
+    <div class="sm:col-span-2 flex justify-end gap-3 pt-2 border-t border-cyan-200/40">
+      <button type="button" @click="closeForm()"
+              class="px-4 py-2 text-sm text-gray-500 bg-gray-100/80 border border-gray-300/50 rounded-lg hover:bg-gray-200 transition-colors">
+        取消
+      </button>
+      <button type="submit"
+              class="px-5 py-2 text-sm text-white bg-cyan-600 rounded-lg hover:bg-cyan-500 transition-colors
+                     border border-cyan-400/30 shadow-[0_0_12px_rgba(6,182,212,0.15)]">
+        保存
+      </button>
+    </div>
+  </form>
+  {% endif %}
+</div>
