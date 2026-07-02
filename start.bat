@@ -1,4 +1,5 @@
-@echo off
+﻿@echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
 title API密钥管理器 — 便携版
 
