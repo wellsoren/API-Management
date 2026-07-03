@@ -154,7 +154,7 @@
             <button hx-delete="/api/v1/apis/{{ api.id }}"
                     hx-target="closest tr"
                     hx-swap="outerHTML swap:0.3s"
-                    onclick="return confirm('确定要删除「{{ api.name or api.id }}」吗？')"
+                    hx-confirm="确定要删除「{{ api.name or api.id }}」吗？"
                     class="p-1.5 hover:bg-red-100 rounded text-red-500"
                     title="删除">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
