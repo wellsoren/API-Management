@@ -86,6 +86,7 @@ hiddenimports = [
     "platformdirs",
     "typing_extensions",
     "zipp",
+    # inflect/portend/tempora 等 jaraco 可选依赖 — 缺失不影响运行
 ]
 
 # ── 排除不必要的包以减小体积 ──────────────────────────────────────

@@ -96,6 +96,7 @@ def main():
         port=port,
         reload=False,
         workers=1,
+        log_config=None,  # 避免打包后 stderr 为 None 导致日志配置崩溃
     )
 
 
