@@ -118,26 +118,51 @@
   </div>
 </div>
 
+<!-- 确认删除模态框 -->
+<div id="delete-modal" class="fixed inset-0 z-50 flex items-center justify-center" style="display:none">
+  <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" onclick="hideDeleteModal()"></div>
+  <div class="relative bg-white rounded-xl shadow-2xl border border-red-200/60 p-6 w-full max-w-sm mx-4">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="p-2 rounded-full bg-red-100">
+        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-800">确认删除</h3>
+        <p class="text-xs text-gray-500 mt-0.5" id="delete-modal-msg">确定要删除此条记录吗？</p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="hideDeleteModal()"
+              class="px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+        取消
+      </button>
+      <button id="delete-confirm-btn"
+              class="px-4 py-2 text-sm text-white bg-red-500 hover:bg-red-400 rounded-lg transition-colors shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+        确认删除
+      </button>
+    </div>
+  </div>
+</div>
+
+{% block extra_scripts %}
 <script>
-// 预置提供商配置数据（全局变量，用于自动填充）
+// 预置提供商配置数据
 const PROVIDER_CONFIGS = {{ provider_configs | tojson | safe }};
 
-// 全局函数：供 HTMX 片段调用以关闭/打开表单
+// 关闭/打开表单
 function closeForm() {
-  const container = document.getElementById('form-container');
-  if (container) container.classList.add('hidden');
+  document.getElementById('form-container')?.classList.add('hidden');
 }
 function openForm(loadUrl) {
-  const container = document.getElementById('form-container');
+  var container = document.getElementById('form-container');
   if (!container) return;
   container.classList.remove('hidden');
-  const area = document.getElementById('form-area');
-  if (area) {
-    htmx.ajax('GET', loadUrl || '/api/v1/apis/new', { target: '#form-area' });
-  }
+  htmx.ajax('GET', loadUrl || '/api/v1/apis/new', { target: '#form-area' });
 }
 
-// 纯 JS 切换密钥显隐（替代 Alpine x-data/x-show）
+// 切换密钥显隐
 function toggleKey(id) {
   var mask = document.getElementById('key-mask-' + id);
   var text = document.getElementById('key-text-' + id);
@@ -150,37 +175,56 @@ function toggleKey(id) {
 
 // HTMX 内容替换后，显式通知 Alpine 初始化新 DOM
 document.addEventListener('htmx:afterSwap', function(evt) {
-  const targetId = evt.detail.target && evt.detail.target.id;
-  if (targetId === 'form-area') {
+  if (evt.detail.target && evt.detail.target.id === 'form-area') {
     if (typeof Alpine !== 'undefined' && typeof Alpine.initTree === 'function') {
       Alpine.initTree(evt.detail.target);
     }
   }
 });
 
-// 删除确认 — 使用 fetch() 绕过 HTMX 事件系统，confirm() 绝对可靠
-function deleteApi(id, name, btn) {
-  if (!confirm('确定要删除「' + name + '」吗？')) return;
+// ---- 删除确认（模态框版，不依赖 confirm()） ----
+var _deleteId = null;
+var _deleteRow = null;
 
-  // 先用动画淡出行
-  var row = btn.closest('tr');
-  if (row) {
-    row.style.transition = 'opacity 0.3s';
-    row.style.opacity = '0';
-  }
-
-  fetch('/api/v1/apis/' + id, { method: 'DELETE' })
-    .then(function(r) {
-      if (!r.ok) throw new Error('服务器返回 ' + r.status);
-      // 移除行
-      if (row) setTimeout(function() { row.remove(); }, 350);
-      // 刷新整个表格区域
-      htmx.ajax('GET', '/api/v1/apis/', { target: '#api-table' });
-    })
-    .catch(function(e) {
-      alert('删除失败：' + e.message);
-      if (row) row.style.opacity = '1';
-    });
+function showDeleteModal(id, name, btn) {
+  _deleteId = id;
+  _deleteRow = btn ? btn.closest('tr') : null;
+  document.getElementById('delete-modal-msg').textContent = '确定要删除「' + name + '」吗？此操作不可恢复。';
+  document.getElementById('delete-modal').style.display = 'flex';
 }
+
+function hideDeleteModal() {
+  _deleteId = null;
+  _deleteRow = null;
+  document.getElementById('delete-modal').style.display = 'none';
+}
+
+// 确认删除按钮点击事件 — 页面加载时注册一次
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('delete-confirm-btn').addEventListener('click', function() {
+    var id = _deleteId;
+    if (id === null) return;
+
+    // 动画淡出行
+    if (_deleteRow) {
+      _deleteRow.style.transition = 'opacity 0.3s';
+      _deleteRow.style.opacity = '0';
+    }
+
+    hideDeleteModal();
+
+    fetch('/api/v1/apis/' + id, { method: 'DELETE' })
+      .then(function(r) {
+        if (!r.ok) throw new Error('服务器返回 ' + r.status);
+        if (_deleteRow) setTimeout(function() { _deleteRow.remove(); }, 350);
+        htmx.ajax('GET', '/api/v1/apis/', { target: '#api-table' });
+      })
+      .catch(function(e) {
+        alert('删除失败：' + e.message);
+        if (_deleteRow) _deleteRow.style.opacity = '1';
+      });
+  });
+});
 </script>
+{% endblock %}
 {% endblock %}
