@@ -39,19 +39,43 @@ def main():
         print("[!] 关闭此窗口即可停止服务")
         print()
 
-        # 先打开浏览器（等 uvicorn 就绪后再开可能会因阻塞错过）
-        webbrowser.open(url)
-
-        # ── 启动 uvicorn（传 app 对象，而非字符串） ──────────
+        import socket
+        import threading
+        import time
         import uvicorn
 
-        uvicorn.run(
-            app,
-            host="127.0.0.1",
-            port=port,
-            log_level="critical",  # 只显示 CRITICAL 级别的错误
-            access_log=False,      # 不输出请求日志
-        )
+        # ── 后台线程启动 uvicorn ────────────────────────────
+        def run_server():
+            uvicorn.run(
+                app,
+                host="127.0.0.1",
+                port=port,
+                log_config=None,   # 完全禁用 uvicorn 日志配置（避免 console=False 时 stderr 为 None 导致崩溃）
+                access_log=False,
+            )
+
+        server_thread = threading.Thread(target=run_server, daemon=True)
+        server_thread.start()
+
+        # ── 等待端口就绪（最多 10 秒） ──────────────────────
+        print("[..] 等待服务就绪...")
+        for _ in range(100):
+            time.sleep(0.1)
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.1):
+                    break
+            except (ConnectionRefusedError, OSError):
+                pass
+
+        print("[OK] 服务已就绪，正在打开浏览器...")
+        webbrowser.open(url)
+
+        # ── 保持主线程存活 ──────────────────────────────────
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
     except Exception:
         import traceback
 
