@@ -74,6 +74,18 @@ hiddenimports = [
     "starlette.middleware",
     "starlette.staticfiles",
     "starlette.templating",
+    # pkg_resources / setuptools 依赖链
+    "jaraco",
+    "jaraco.functools",
+    "jaraco.text",
+    "more_itertools",
+    "inflect",
+    "backports.tarfile",
+    "importlib_resources",
+    "importlib_metadata",
+    "platformdirs",
+    "typing_extensions",
+    "zipp",
 ]
 
 # ── 排除不必要的包以减小体积 ──────────────────────────────────────
@@ -87,7 +99,6 @@ excludes = [
     "pandas",
     "notebook",
     "jupyter",
-    "setuptools",
     "pip",
     "wheel",
     "pywin32",

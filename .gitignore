@@ -26,3 +26,13 @@ Thumbs.db
 
 # Environment
 .env
+
+# Test / temp files
+*.pyc
+*.pyo
+.atomcode/
+dist_check.txt
+dist_enum.txt
+output.txt
+test_out.txt
+test_verify.py
