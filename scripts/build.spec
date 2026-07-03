@@ -42,6 +42,9 @@ datas.extend(collect_data_files(str(PROJECT_DIR / "app" / "static"), "app/static
 hiddenimports = [
     # 项目模块
     "app",
+    "app.main",
+    "app.models",
+    "app.db",
     "app.routers",
     # SQLModel / SQLAlchemy
     "sqlmodel",

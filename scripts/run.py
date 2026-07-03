@@ -1,7 +1,7 @@
 """
 API密钥管理器 — 可执行文件启动入口
 被 PyInstaller 打包为 exe 后的实际入口点。
-启动 uvicorn Web 服务器并自动打开浏览器。
+直接导入 app 对象传给 uvicorn（避免字符串导入在 PyInstaller 中失败）。
 """
 import os
 import sys
@@ -10,46 +10,55 @@ from pathlib import Path
 
 
 def main():
-    print("=" * 50)
-    print("  API 密钥管理器 v1.0")
-    print("=" * 50)
-    print()
+    try:
+        # ── 确定项目根目录 ──────────────────────────────────
+        if getattr(sys, "frozen", False):
+            # 打包后：exe 所在目录
+            app_dir = Path(sys.executable).resolve().parent
+        else:
+            # 开发环境：scripts/run.py → 上一级为项目根目录
+            app_dir = Path(__file__).resolve().parent.parent
 
-    # 切换到可执行文件所在目录（打包后）或项目根目录（开发时）
-    # 这样数据库、日志等资源与 exe 同级存放
-    if getattr(sys, "frozen", False):
-        app_dir = Path(sys.executable).resolve().parent
-    else:
-        app_dir = Path(__file__).resolve().parent.parent
-    os.chdir(str(app_dir))
+        # 切换工作目录并设置模块搜索路径
+        os.chdir(str(app_dir))
+        sys.path.insert(0, str(app_dir))
 
-    # 启动 uvicorn
-    import uvicorn
+        # ── 直接导入 app 对象 ──────────────────────────────
+        # PyInstaller 在分析期会发现此导入，自动将 app.main 及其依赖打包
+        from app.main import app
 
-    port = 8000
-    print(f"[OK] 服务启动中... http://localhost:{port}")
-    print("[OK] 浏览器自动打开（如未跳转，请手动访问上述地址）")
-    print("[!] 关闭此窗口即可停止服务")
-    print()
+        port = 8000
+        url = f"http://127.0.0.1:{port}"
 
-    # 延迟打开浏览器（等服务器就绪）
-    import threading
+        print("=" * 50)
+        print("  API 密钥管理器 v1.0")
+        print("=" * 50)
+        print()
+        print(f"[OK] 启动中... {url}")
+        print("[OK] 浏览器自动打开（如未跳转，请手动访问上述地址）")
+        print("[!] 关闭此窗口即可停止服务")
+        print()
 
-    def open_browser():
+        # 先打开浏览器（等 uvicorn 就绪后再开可能会因阻塞错过）
+        webbrowser.open(url)
+
+        # ── 启动 uvicorn（传 app 对象，而非字符串） ──────────
+        import uvicorn
+
+        uvicorn.run(
+            app,
+            host="127.0.0.1",
+            port=port,
+            log_level="critical",  # 只显示 CRITICAL 级别的错误
+            access_log=False,      # 不输出请求日志
+        )
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        print("\n[!] 启动失败，窗口将在 10 秒后自动关闭...")
         import time
-        time.sleep(1.5)
-        webbrowser.open(f"http://localhost:{port}")
-
-    threading.Thread(target=open_browser, daemon=True).start()
-
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=port,
-        reload=False,
-        workers=1,
-        log_config=None,  # 避免打包后 stderr 为 None 导致日志配置崩溃
-    )
+        time.sleep(10)
 
 
 if __name__ == "__main__":
