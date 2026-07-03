@@ -12,7 +12,7 @@
     pip install pyinstaller
 
 输出：
-    dist/API密钥管理器/  (目录，包含可执行文件 + 资源文件)
+    dist/API密钥管理器_v1.0_<平台>/API密钥管理器/  (目录，含可执行文件 + 资源文件)
 """
 
 import argparse
@@ -21,13 +21,21 @@ import platform
 import shutil
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DIST_DIR = PROJECT_DIR / "dist"
 SPEC_FILE = PROJECT_DIR / "scripts" / "build.spec"
+RUN_SCRIPT = PROJECT_DIR / "scripts" / "run.py"
 
 SYSTEM = platform.system()  # Windows / Darwin / Linux
+
+# 需要下载的 vendor JS 文件
+VENDOR_FILES = {
+    "htmx.min.js": "https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js",
+    "alpine.min.js": "https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js",
+}
 
 
 def check_dependencies():
@@ -38,57 +46,154 @@ def check_dependencies():
         print("[!] 未安装 PyInstaller，正在安装...")
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", "pyinstaller"],
-            cwd=PROJECT_DIR,
+            cwd=str(PROJECT_DIR),
         )
-        print("[✓] PyInstaller 安装完成")
+        print("[OK] PyInstaller 安装完成")
+
+
+def ensure_vendor_files():
+    """下载 vendor JS 文件到 app/static/vendor/，确保打包时能包含"""
+    vendor_dir = PROJECT_DIR / "app" / "static" / "vendor"
+    vendor_dir.mkdir(parents=True, exist_ok=True)
+
+    for name, url in VENDOR_FILES.items():
+        dst = vendor_dir / name
+        if dst.exists():
+            print(f"  [OK] {name} 已存在")
+            continue
+        print(f"  [..] 正在下载 {name} ...", end=" ", flush=True)
+        try:
+            urllib.request.urlretrieve(url, str(dst))
+            print("[OK]")
+        except Exception as e:
+            print(f"[FAIL] 下载失败: {e}")
+            print(f"  [!] 请手动下载 {url} 到 {dst}")
 
 
 def build():
     """执行打包"""
     check_dependencies()
 
-    # 清理旧的 dist
-    target_name = f"API密钥管理器_v1.0_{SYSTEM.lower()}"
-    target_dir = DIST_DIR / target_name
-    if target_dir.exists():
-        shutil.rmtree(target_dir)
-
-    print(f"============================================")
+    print()
+    print("=" * 60)
     print(f"  打包平台: {SYSTEM}")
-    print(f"  输出目录: {target_dir}")
-    print(f"============================================")
+    print(f"  输出目录: {DIST_DIR}")
+    print("=" * 60)
     print()
 
-    # 执行 PyInstaller
-    cmd = [
-        sys.executable, "-m", "PyInstaller",
-        str(SPEC_FILE),
-        "--distpath", str(target_dir),
-        "--workpath", str(PROJECT_DIR / "build"),
-        "--clean",
-        "--noconfirm",
-    ]
+    # 1. 下载 vendor JS 文件
+    print("[1/3] 下载前端依赖...")
+    ensure_vendor_files()
+    print()
 
-    print(f"执行: {' '.join(cmd)}")
-    subprocess.check_call(cmd, cwd=PROJECT_DIR)
+    # 2. 检查 spec 文件存在
+    if not SPEC_FILE.exists():
+        print(f"[FAIL] 错误: spec 文件不存在: {SPEC_FILE}")
+        print("[!] 请确保 scripts/build.spec 已创建")
+        sys.exit(1)
 
-    # 清理临时 build 目录
+    if not RUN_SCRIPT.exists():
+        print(f"[FAIL] 错误: 启动脚本不存在: {RUN_SCRIPT}")
+        print("[!] 请确保 scripts/run.py 已创建")
+        sys.exit(1)
+
+    # 3. 清理旧的构建目录
+    print("[2/3] 清理旧构建...")
     build_dir = PROJECT_DIR / "build"
     if build_dir.exists():
         shutil.rmtree(build_dir)
 
+    target_name = f"API密钥管理器_v1.0_{SYSTEM.lower()}"
+    target_dir = DIST_DIR / target_name
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
     print()
-    print(f"[✓] 打包完成！")
-    print(f"    可执行文件位置: {target_dir}/")
 
-    # 显示不同平台的可执行文件路径
+    # 4. 执行 PyInstaller
+    #    关键：Windows 路径含空格时，用 str() 传给 subprocess，
+    #    subprocess 会正确处理（因为它接收的是列表，不是 shell 字符串）
+    print("[3/3] 执行 PyInstaller 打包...")
+    print(f"  Spec 文件: {SPEC_FILE}")
+    print(f"  目标路径: {target_dir}")
+    print()
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        str(SPEC_FILE),
+        "--distpath",
+        str(target_dir),
+        "--workpath",
+        str(PROJECT_DIR / "build"),
+        "--clean",
+        "--noconfirm",
+    ]
+
+    print(f"  执行命令:")
+    # 显示时用引号包裹含空格的路径以便用户理解
+    display_cmd = []
+    for part in cmd:
+        if " " in part:
+            display_cmd.append(f'"{part}"')
+        else:
+            display_cmd.append(part)
+    print(f"    {' '.join(display_cmd)}")
+    print()
+
+    try:
+        subprocess.check_call(cmd, cwd=str(PROJECT_DIR))
+    except subprocess.CalledProcessError as e:
+        print()
+        print("[FAIL] 打包失败!")
+        print(f"    退出码: {e.returncode}")
+        print()
+        print("可能的原因及解决方案:")
+        print("  1. 网络问题 — 确认 vendor JS 文件已下载到 app/static/vendor/")
+        print("  2. 缺少依赖 — 运行: pip install -r requirements.txt")
+        print("  3. 磁盘空间不足 — 释放空间后重试")
+        print("  4. 权限问题 — 以管理员身份运行")
+        print()
+        print("手动排查:")
+        print(f"  cd {PROJECT_DIR}")
+        print(f"  {' '.join(cmd)}")
+        sys.exit(1)
+
+    # 5. 清理临时 build 目录
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+
+    print()
+    print("[OK] 打包完成！")
+    print()
+
+    # 6. 显示输出文件
     if SYSTEM == "Windows":
-        print(f"    可执行文件: {target_dir}/API密钥管理器/API密钥管理器.exe")
-        print(f"    调试版: {target_dir}/API密钥管理器/API密钥管理器_调试版.exe")
+        print(f"  主程序:     {target_dir / 'API密钥管理器.exe'}")
+        print(f"  调试版:     {target_dir / 'API密钥管理器_调试版.exe'}")
+        print(f"  目录总大小: {get_dir_size(target_dir):.1f} MB")
     elif SYSTEM == "Darwin":
-        print(f"    应用包: {target_dir}/API密钥管理器/API密钥管理器.app")
+        app_dir = target_dir
+        print(f"  App Bundle: {app_dir / 'API密钥管理器.app'}")
+        print()
+        print("  注意: macOS 需要执行以下命令以移除隔离属性:")
+        print(f"    xattr -cr {app_dir / 'API密钥管理器.app'}")
+        print(f"  目录总大小: {get_dir_size(target_dir):.1f} MB")
     else:
-        print(f"    可执行文件: {target_dir}/API密钥管理器/API密钥管理器")
+        exe_path = target_dir / "API密钥管理器"
+        print(f"  可执行文件: {exe_path}")
+        if exe_path.exists():
+            os.chmod(str(exe_path), 0o755)
+            print(f"  目录总大小: {get_dir_size(target_dir):.1f} MB")
+
+
+def get_dir_size(path: Path) -> float:
+    """计算目录大小（MB）"""
+    total = 0
+    for f in path.rglob("*"):
+        if f.is_file():
+            total += f.stat().st_size
+    return total / 1024 / 1024
 
 
 def print_cross_platform_guide():
@@ -112,7 +217,7 @@ def print_cross_platform_guide():
     print("    cd api_management")
     print("    python3 scripts/build.py")
     print()
-    print("  或者使用 CI/CD（如 GitHub Actions）自动化三平台打包。")
+    print("  或使用 CI/CD 自动化打包。")
     print("=" * 60)
 
 
