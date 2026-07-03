@@ -158,6 +158,16 @@ document.addEventListener('htmx:afterSwap', function(evt) {
   }
 });
 
-// 删除按钮的 hx-confirm 由 HTMX 原生处理，无需额外 JS
+// 删除确认 — 使用纯 JS + htmx.ajax 手动触发，绕过 HTMX 属性事件委托
+function deleteApi(id, name) {
+  if (!confirm('确定要删除「' + name + '」吗？')) return false;
+  const btn = event.currentTarget;
+  const row = btn.closest('tr');
+  htmx.ajax('DELETE', '/api/v1/apis/' + id, {
+    target: row,
+    swap: 'outerHTML swap:0.3s'
+  });
+  return false;
+}
 </script>
 {% endblock %}
