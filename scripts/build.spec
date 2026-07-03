@@ -15,8 +15,7 @@ import sys
 from pathlib import Path
 
 # ── 项目根目录（spec 文件所在目录的上级） ──────────────────────────
-# 注意：PyInstaller exec() 执行 spec 文件，没有 __file__
-# 用 SPEC 变量（PyInstaller 提供）：spec 文件绝对路径
+# PyInstaller 在 exec() spec 文件时提供 SPEC 变量
 PROJECT_DIR = Path(os.path.dirname(SPEC)).parent
 
 # ── 数据文件：templates 和 static ────────────────────────────────
@@ -38,13 +37,17 @@ datas = []
 datas.extend(collect_data_files(str(PROJECT_DIR / "app" / "templates"), "app/templates"))
 datas.extend(collect_data_files(str(PROJECT_DIR / "app" / "static"), "app/static"))
 
-# ── 隐藏导入（PyInstaller 有时会遗漏的包） ────────────────────────
+# ── 隐藏导入（只包含已安装的包，避免 ERROR） ────────────────────
+# 提示：PyInstaller 会自动分析大部分依赖，此处仅补充自动分析遗漏的
 hiddenimports = [
+    # 项目模块
     "app",
     "app.routers",
-    "app.templates",
-    "app.templates.fragments",
+    # SQLModel / SQLAlchemy
     "sqlmodel",
+    "sqlalchemy",
+    "sqlalchemy.sql.default_comparator",
+    # uvicorn 及其子模块
     "uvicorn",
     "uvicorn.logging",
     "uvicorn.loops",
@@ -54,39 +57,41 @@ hiddenimports = [
     "uvicorn.protocols.http.auto",
     "uvicorn.protocols.websockets",
     "uvicorn.protocols.websockets.auto",
+    # httpx 及其子模块
     "httpx",
-    "httpx._transports.default",
-    "anyio",
-    "anyio._backends",
-    "anyio._backends._asyncio",
-    "sniffio",
-    "h11",
     "httpcore",
     "httpcore._backends",
     "httpcore._backends.sync",
+    # anyio 及其子模块
+    "anyio",
+    "anyio._backends",
+    "anyio._backends._asyncio",
+    # 编解码/协议
+    "h11",
     "idna",
+    "sniffio",
     "multipart",
+    # Pydantic
     "pydantic",
     "pydantic_core",
+    # Jinja2 模板引擎
     "jinja2",
     "markupsafe",
+    "markupsafe._speedups",
+    # Starlette
     "starlette",
     "starlette.middleware",
     "starlette.staticfiles",
     "starlette.templating",
-    # pkg_resources / setuptools 依赖链
-    "jaraco",
-    "jaraco.functools",
-    "jaraco.text",
-    "more_itertools",
-    "inflect",
-    "backports.tarfile",
-    "importlib_resources",
+    # setuptools/pkg_resources — SQLAlchemy 等需要
+    "setuptools",
+    "pkg_resources",
+    # importlib 元数据 — 运行时用到
     "importlib_metadata",
-    "platformdirs",
+    "importlib_resources",
     "typing_extensions",
     "zipp",
-    # inflect/portend/tempora 等 jaraco 可选依赖 — 缺失不影响运行
+    "platformdirs",
 ]
 
 # ── 排除不必要的包以减小体积 ──────────────────────────────────────
@@ -102,13 +107,9 @@ excludes = [
     "jupyter",
     "pip",
     "wheel",
-    "pywin32",
     "IPython",
     "lxml",
 ]
-
-# ── 关键：处理路径中的空格 ────────────────────────────────────────
-# PyInstaller 的 spec 文件内部路径用 str 表示，已有空格时 Python 原生支持
 
 block_cipher = None
 
@@ -144,7 +145,7 @@ exe_console = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,  # 显示控制台窗口
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -168,7 +169,7 @@ exe_windowed = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # 隐藏控制台窗口
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
