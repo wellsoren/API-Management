@@ -150,7 +150,7 @@
               </svg>
             </button>
             <!-- 删除 -->
-            <button onclick="deleteApi({{ api.id }}, '{{ (api.name or api.id) | replace("'", "\\'") }}')"
+            <button onclick="deleteApi({{ api.id }}, '{{ (api.name or api.id) | replace("'", "\\'") }}', this)"
                     class="p-1.5 hover:bg-red-100 rounded text-red-500"
                     title="删除">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

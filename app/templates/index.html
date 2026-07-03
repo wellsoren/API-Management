@@ -158,16 +158,29 @@ document.addEventListener('htmx:afterSwap', function(evt) {
   }
 });
 
-// 删除确认 — 使用纯 JS + htmx.ajax 手动触发，绕过 HTMX 属性事件委托
-function deleteApi(id, name) {
-  if (!confirm('确定要删除「' + name + '」吗？')) return false;
-  const btn = event.currentTarget;
-  const row = btn.closest('tr');
-  htmx.ajax('DELETE', '/api/v1/apis/' + id, {
-    target: row,
-    swap: 'outerHTML swap:0.3s'
-  });
-  return false;
+// 删除确认 — 使用 fetch() 绕过 HTMX 事件系统，confirm() 绝对可靠
+function deleteApi(id, name, btn) {
+  if (!confirm('确定要删除「' + name + '」吗？')) return;
+
+  // 先用动画淡出行
+  var row = btn.closest('tr');
+  if (row) {
+    row.style.transition = 'opacity 0.3s';
+    row.style.opacity = '0';
+  }
+
+  fetch('/api/v1/apis/' + id, { method: 'DELETE' })
+    .then(function(r) {
+      if (!r.ok) throw new Error('服务器返回 ' + r.status);
+      // 移除行
+      if (row) setTimeout(function() { row.remove(); }, 350);
+      // 刷新整个表格区域
+      htmx.ajax('GET', '/api/v1/apis/', { target: '#api-table' });
+    })
+    .catch(function(e) {
+      alert('删除失败：' + e.message);
+      if (row) row.style.opacity = '1';
+    });
 }
 </script>
 {% endblock %}
