@@ -146,5 +146,26 @@ document.addEventListener('htmx:afterSwap', function(evt) {
     }
   }
 });
+
+// 删除确认：使用捕获阶段监听，完全绕过 Alpine/HTMX 的事件委托干扰
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.js-delete-btn');
+  if (!btn) return;
+  var msg = btn.getAttribute('data-delete-msg') || '确定要删除吗？';
+  var url = btn.getAttribute('data-delete-url');
+  if (!url) return;
+  if (!confirm(msg)) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+  // 确认后手动发送 HTMX 删除请求
+  e.preventDefault();
+  e.stopPropagation();
+  htmx.ajax('DELETE', url, {
+    target: btn.closest('tr'),
+    swap: 'outerHTML swap:0.3s'
+  });
+}, true); // 捕获阶段，早于所有冒泡阶段的事件处理
 </script>
 {% endblock %}
