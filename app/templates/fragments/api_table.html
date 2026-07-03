@@ -16,8 +16,7 @@
     </thead>
     <tbody class="divide-y divide-cyan-200/20" id="api-tbody">
       {% for api in apis %}
-      <tr class="hover:bg-cyan-50/50 transition-colors group"
-          x-data="{ showKey: false }">
+      <tr class="hover:bg-cyan-50/50 transition-colors group">
         <!-- 1. 提供商 -->
         <td class="px-4 py-3">
           <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium
@@ -80,15 +79,15 @@
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-500">
               {% if api.api_key %}
-              <span x-show="!showKey" class="font-mono text-gray-400">••••••••</span>
-              <span x-show="showKey" class="font-mono text-amber-700 text-[11px]">{{ api.api_key }}</span>
+              <span id="key-mask-{{ api.id }}" class="font-mono text-gray-400">••••••••</span>
+              <span id="key-text-{{ api.id }}" class="font-mono text-amber-700 text-[11px]" style="display:none">{{ api.api_key }}</span>
               {% else %}
               <span class="text-gray-400">-</span>
               {% endif %}
             </span>
             {% if api.api_key %}
             <div class="relative flex items-center gap-1">
-              <button @click="showKey = !showKey"
+              <button onclick="toggleKey({{ api.id }})"
                       class="p-1 hover:bg-gray-200/60 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                       title="查看密钥">
                 <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,9 +150,11 @@
               </svg>
             </button>
             <!-- 删除 -->
-            <button data-delete-url="/api/v1/apis/{{ api.id }}"
-                    data-delete-msg="确定要删除「{{ api.name or api.id }}」吗？"
-                    class="js-delete-btn p-1.5 hover:bg-red-100 rounded text-red-500"
+            <button hx-delete="/api/v1/apis/{{ api.id }}"
+                    hx-target="closest tr"
+                    hx-swap="outerHTML swap:0.3s"
+                    hx-confirm="确定要删除「{{ api.name or api.id }}」吗？"
+                    class="p-1.5 hover:bg-red-100 rounded text-red-500"
                     title="删除">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
