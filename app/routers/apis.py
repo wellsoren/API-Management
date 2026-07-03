@@ -113,7 +113,7 @@ async def new_api_form(request: Request, session: Session = Depends(get_session)
 async def create_api(
     request: Request,
     provider: str = Form(default=""),
-    name: str = Form(...),
+    name: str = Form(default=""),
     url_openai: str = Form(default=""),
     url_anthropic: str = Form(default=""),
     model_name: str = Form(default=""),
@@ -170,7 +170,7 @@ async def update_api(
     request: Request,
     api_id: int,
     provider: str = Form(default=""),
-    name: str = Form(...),
+    name: str = Form(default=""),
     url_openai: str = Form(default=""),
     url_anthropic: str = Form(default=""),
     model_name: str = Form(default=""),
