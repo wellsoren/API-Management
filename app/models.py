@@ -43,6 +43,7 @@ PRESET_PROVIDERS: List[ProviderConfig] = [
     ProviderConfig("月之暗面", "https://api.moonshot.cn/v1", "", "https://platform.kimi.com/"),
     ProviderConfig("跃阶星辰", "https://api.stepfun.com/v1", "", "https://platform.stepfun.com/"),
     ProviderConfig("智谱AI", "https://open.bigmodel.cn/api/paas/v4", "", "https://open.bigmodel.cn/"),
+    ProviderConfig("在问", "https://oneapi.zaiwenai.com/v1", "https://oneapi.zaiwenai.com/v1/chat/claude", "https://platform.zaiwenai.com/"),
     ProviderConfig("自定义模型", "", "", ""),
 ]
 

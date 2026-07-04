@@ -72,18 +72,20 @@
         onsubmit="closeForm()"
         class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-    <!-- 1. 模型提供商 -->
+    <!-- 1. 模型提供商（支持输入自定义名称） -->
     <div>
       <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型提供商</label>
-      <select name="provider"
-              x-model="provider_"
-              @change="onProviderChange()"
-              class="w-full px-3 py-2 input-neon rounded-lg text-sm appearance-none bg-white">
-        <option value="">-- 选择提供商 --</option>
+      <input list="provider-list-edit"
+             name="provider"
+             x-model="provider_"
+             @input="onProviderChange()"
+             placeholder="选择或输入自定义提供商名称..."
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+      <datalist id="provider-list-edit">
         {% for p in providers %}
-        <option value="{{ p }}" {% if api and api.provider == p %}selected{% endif %}>{{ p }}</option>
+        <option value="{{ p }}">{{ p }}</option>
         {% endfor %}
-      </select>
+      </datalist>
     </div>
 
     <!-- 2. 模型名 -->
@@ -219,18 +221,20 @@
         onsubmit="closeForm()"
         class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-    <!-- 1. 模型提供商 -->
+    <!-- 1. 模型提供商（支持输入自定义名称） -->
     <div>
       <label class="block text-[11px] uppercase tracking-wider text-gray-500 mb-1.5">模型提供商</label>
-      <select name="provider"
-              x-model="provider_"
-              @change="onProviderChange()"
-              class="w-full px-3 py-2 input-neon rounded-lg text-sm appearance-none bg-white">
-        <option value="">-- 选择提供商 --</option>
+      <input list="provider-list-new"
+             name="provider"
+             x-model="provider_"
+             @input="onProviderChange()"
+             placeholder="选择或输入自定义提供商名称..."
+             class="w-full px-3 py-2 input-neon rounded-lg text-sm">
+      <datalist id="provider-list-new">
         {% for p in providers %}
         <option value="{{ p }}">{{ p }}</option>
         {% endfor %}
-      </select>
+      </datalist>
     </div>
 
     <!-- 2. 模型名 -->
