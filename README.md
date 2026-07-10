@@ -98,9 +98,14 @@ api_management/
 │       │   ├── input.css  # Tailwind 输入文件
 │       │   └── app.css    # Tailwind 编译产物（自动生成）
 │       ├── icon/
-│       │   ├── icon.ico      # Windows exe 图标
-│       │   ├── AppIcon.icns  # macOS 应用图标
-│       │   └── favicon.png   # Web 浏览器标签页图标
+│       │   ├── icon.ico              # Windows exe 图标
+│       │   ├── AppIcon.icns          # macOS 应用图标
+│       │   ├── favicon-16x16.png     # 16x16 标签页图标
+│       │   ├── favicon-32x32.png     # 32x32 标签页图标
+│       │   ├── favicon-48x48.png     # 48x48 标签页图标
+│       │   ├── icon-192x192.png      # 192x192 高分辨率图标
+│       │   ├── icon-512x512.png      # 512x512 高分辨率图标
+│       │   └── apple-touch-icon.png  # iOS Safari 图标
 │       └── vendor/        # 第三方 JS（自动填充）
 ├── data/
 │   └── app.db             # SQLite 数据库
