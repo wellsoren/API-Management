@@ -97,6 +97,10 @@ api_management/
 │       ├── css/
 │       │   ├── input.css  # Tailwind 输入文件
 │       │   └── app.css    # Tailwind 编译产物（自动生成）
+│       ├── icon/
+│       │   ├── icon.ico      # Windows exe 图标
+│       │   ├── AppIcon.icns  # macOS 应用图标
+│       │   └── favicon.png   # Web 浏览器标签页图标
 │       └── vendor/        # 第三方 JS（自动填充）
 ├── data/
 │   └── app.db             # SQLite 数据库

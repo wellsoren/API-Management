@@ -114,6 +114,20 @@ excludes = [
     "lxml",
 ]
 
+# ── 平台图标 ─────────────────────────────────────────────────────
+# Windows: .ico 文件嵌入 exe
+# macOS: .icns 文件（需配合 APP 构建，当前 EXE 构建 macOS 下为 Unix 可执行文件）
+ICON_DIR = PROJECT_DIR / "app" / "static" / "icon"
+ICON_FILE = None
+if sys.platform == "win32":
+    ico_path = ICON_DIR / "icon.ico"
+    if ico_path.exists():
+        ICON_FILE = str(ico_path)
+elif sys.platform == "darwin":
+    icns_path = ICON_DIR / "AppIcon.icns"
+    if icns_path.exists():
+        ICON_FILE = str(icns_path)
+
 block_cipher = None
 
 # ================================================================
@@ -142,6 +156,7 @@ exe_console = EXE(
     a.datas,
     [],
     name="API密钥管理器_调试版",
+    icon=ICON_FILE,
     debug=True,
     bootloader_ignore_signals=False,
     strip=False,
@@ -166,6 +181,7 @@ exe_windowed = EXE(
     a.datas,
     [],
     name="API密钥管理器",
+    icon=ICON_FILE,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
