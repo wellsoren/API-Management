@@ -15,6 +15,17 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 router = APIRouter()
 
 
+def _stats_and_table(total: int, providers: list, apis: list) -> str:
+    """渲染统计卡片（OOB）和表格HTML，拼合返回"""
+    stats_html = templates.env.get_template("fragments/stats_cards.html").render(
+        {"total": total, "providers": providers}
+    )
+    table_html = templates.env.get_template("fragments/api_table.html").render(
+        {"apis": apis, "providers": providers}
+    )
+    return f'<div id="stats-container" hx-swap-oob="true">{stats_html}</div>{table_html}'
+
+
 @router.get("/", response_class=HTMLResponse)
 async def list_apis(
     request: Request,
@@ -142,10 +153,8 @@ async def create_api(
     db_providers = session.exec(select(ApiInfo.provider).distinct()).all()
     db_set = {p for p in db_providers if p}
     all_providers = list(dict.fromkeys(PRESET_PROVIDER_NAMES + sorted(db_set, key=str.lower)))
-    return templates.TemplateResponse(
-        request, "fragments/api_table.html",
-        {"apis": apis, "providers": all_providers}
-    )
+    total = len(apis)
+    return HTMLResponse(_stats_and_table(total, all_providers, apis))
 
 
 @router.get("/{api_id}/edit", response_class=HTMLResponse)
@@ -199,10 +208,54 @@ async def update_api(
     db_providers = session.exec(select(ApiInfo.provider).distinct()).all()
     db_set = {p for p in db_providers if p}
     all_providers = list(dict.fromkeys(PRESET_PROVIDER_NAMES + sorted(db_set, key=str.lower)))
-    return templates.TemplateResponse(
-        request, "fragments/api_table.html",
-        {"apis": apis, "providers": all_providers}
+    total = len(apis)
+    return HTMLResponse(_stats_and_table(total, all_providers, apis))
+
+
+@router.post("/{api_id}/copy", response_class=HTMLResponse)
+async def copy_api(
+    request: Request,
+    api_id: int,
+    session: Session = Depends(get_session),
+):
+    """复制 API 记录（含所有字段），名称追加（副本）标记"""
+    original = session.get(ApiInfo, api_id)
+    if not original:
+        return HTMLResponse("", status_code=404)
+
+    new_name = original.name + "（副本）"
+    # 如果副本名已存在，继续累加
+    existing = session.exec(select(ApiInfo).where(ApiInfo.name == new_name)).first()
+    if existing:
+        suffix = 2
+        while True:
+            candidate = f"{original.name}（副本{suffix}）"
+            if not session.exec(select(ApiInfo).where(ApiInfo.name == candidate)).first():
+                new_name = candidate
+                break
+            suffix += 1
+
+    new_api = ApiInfo(
+        provider=original.provider,
+        name=new_name,
+        url_openai=original.url_openai,
+        url_anthropic=original.url_anthropic,
+        model_name=original.model_name,
+        model_attr=original.model_attr,
+        api_key=original.api_key,
+        app_usage=original.app_usage,
+        website=original.website,
     )
+    session.add(new_api)
+    session.commit()
+    session.refresh(new_api)
+
+    apis = session.exec(select(ApiInfo)).all()
+    db_providers = session.exec(select(ApiInfo.provider).distinct()).all()
+    db_set = {p for p in db_providers if p}
+    all_providers = list(dict.fromkeys(PRESET_PROVIDER_NAMES + sorted(db_set, key=str.lower)))
+    total = len(apis)
+    return HTMLResponse(_stats_and_table(total, all_providers, apis))
 
 
 @router.delete("/{api_id}", response_class=HTMLResponse)
@@ -215,4 +268,10 @@ async def delete_api(
     if api:
         session.delete(api)
         session.commit()
-    return HTMLResponse("")
+
+    apis = session.exec(select(ApiInfo)).all()
+    db_providers = session.exec(select(ApiInfo.provider).distinct()).all()
+    db_set = {p for p in db_providers if p}
+    all_providers = list(dict.fromkeys(PRESET_PROVIDER_NAMES + sorted(db_set, key=str.lower)))
+    total = len(apis)
+    return HTMLResponse(_stats_and_table(total, all_providers, apis))
